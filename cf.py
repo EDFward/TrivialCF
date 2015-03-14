@@ -1,19 +1,38 @@
 import pickle
+import os.path
 
 import numpy as np
+from scipy import sparse
 from sklearn.metrics.pairwise import pairwise_distances
 
-
-rating_matrix = pickle.load(file('../train.pkl'))
-movie_association = rating_matrix.T * rating_matrix
+from utility import read_data_matrix
 
 
-def k_nearest_neighbors(k, data_matrix, users, similarity_measure):
+def get_data_matrix(pickle_file_path, generate_method):
+    if os.path.isfile(pickle_file_path):
+        return pickle.load(file(pickle_file_path))
+    else:
+        data = generate_method()
+        pickle.dump(data, file(pickle_file_path, 'wb'))
+        return data
+
+
+rating_matrix = get_data_matrix('../train.pkl', read_data_matrix)
+movie_product = get_data_matrix('../movie-dot.pkl',
+                                lambda: rating_matrix.T * rating_matrix)
+movie_cosine = get_data_matrix('../movie-cosine.pkl',
+                               lambda: sparse.csr_matrix(
+                                   1 - pairwise_distances(rating_matrix.T,
+                                                          metric='cosine')))
+
+
+def k_nearest_neighbors(k, data_matrix, rows, similarity_measure, n_jobs=1):
     """
-    Find k nearest neighbors for given user lists.
+    Find k nearest neighbors for given rows of data_matrix. Used in
+    memory-based CF.
     :param k: number of nearest users
     :param data_matrix: represents data points
-    :param users: a user list
+    :param rows: rows to query of this data_matrix
     :param similarity_measure: similarity_measure: 'cosine' or 'dot_product'
     :return: nearest neighbors and corresponding similarities
     """
@@ -21,9 +40,9 @@ def k_nearest_neighbors(k, data_matrix, users, similarity_measure):
     # find k nearest neighbor for each user
     if similarity_measure == 'cosine':
         dist = pairwise_distances(data_matrix,
-                                  data_matrix[users, :],
+                                  data_matrix[rows, :],
                                   metric='cosine',
-                                  n_jobs=1)
+                                  n_jobs=n_jobs)
         similarities = 1 - dist
         # first count itself then remove it
         min_index = np.argpartition(dist, k + 1, axis=0)[:k + 1, :]
@@ -34,7 +53,7 @@ def k_nearest_neighbors(k, data_matrix, users, similarity_measure):
             # remove the most similar one: itself
             nearest_neighbors.append(col[1:])
     elif similarity_measure == 'dot_product':
-        similarities = (data_matrix * data_matrix[users, :].T).toarray()
+        similarities = (data_matrix * data_matrix[rows, :].T).toarray()
         # make it column-wise distances matrix as above
         dist = -similarities
         min_index = np.argpartition(dist, k + 1, axis=0)[:k + 1, :]
@@ -42,8 +61,8 @@ def k_nearest_neighbors(k, data_matrix, users, similarity_measure):
             col = min_index[:, i]
             col = col[np.argsort(dist[:, i][col])]
             # exclude the user itself
-            if users[i] in col:
-                nn = np.delete(col, np.where(col == users[i]))
+            if rows[i] in col:
+                nn = np.delete(col, np.where(col == rows[i]))
             else:
                 nn = col[:-1]
             nearest_neighbors.append(nn)
@@ -73,7 +92,6 @@ def memory_cf(users, movies, k, similarity_measure, weight_schema):
     nearest_neighbors, similarities = k_nearest_neighbors(k, rating_matrix,
                                                           users,
                                                           similarity_measure)
-
     ratings = []
     if weight_schema == 'mean':
         for neighbors, movie in zip(nearest_neighbors, movies):
@@ -105,16 +123,32 @@ def model_cf(users, movies, k, similarity_measure, weight_schema):
     if type(movies) != list:
         movies = [movies]
 
-    nearest_neighbors, similarities = k_nearest_neighbors(k, movie_association,
-                                                          movies,
-                                                          similarity_measure)
+    if similarity_measure == 'cosine':
+        neighbor_similarities = movie_cosine[movies, :].toarray()
+    elif similarity_measure == 'dot_product':
+        neighbor_similarities = movie_product[movies, :].toarray()
+
+    dist = -neighbor_similarities
+    min_index = np.argpartition(dist, k + 1, axis=1)[:, :k + 1]
+
+    nearest_neighbors = []
+    for i in range(min_index.shape[0]):
+        row = min_index[i, :]
+        row = row[np.argsort(dist[i, :][row])]
+        # exclude the movie itself
+        if movies[i] in row:
+            nn = np.delete(row, np.where(row == movies[i]))
+        else:
+            nn = row[:-1]
+        nearest_neighbors.append(nn)
+
     ratings = []
     if weight_schema == 'mean':
         for neighbors, user in zip(nearest_neighbors, users):
             ratings.append(rating_matrix[user, neighbors].sum() / k + 3)
     elif weight_schema == 'weighted_sum':
         for neighbors, user, similarity in zip(nearest_neighbors, users,
-                                               similarities.T):
+                                               neighbor_similarities):
             neighbor_ratings = rating_matrix[user, neighbors].toarray()
             rating = np.dot(neighbor_ratings.reshape(-1),
                             similarity[neighbors])
