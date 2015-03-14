@@ -104,7 +104,7 @@ def memory_cf(users, movies, k, similarity_measure, weight_schema):
                             similarity[neighbors])
             rating /= similarity[neighbors].sum()
             rating += 3
-            ratings.append(rating)
+            ratings.append(rating if not np.isnan(rating) else 3)
 
     return ratings
 
@@ -154,7 +154,7 @@ def model_cf(users, movies, k, similarity_measure, weight_schema):
                             similarity[neighbors])
             rating /= similarity[neighbors].sum()
             rating += 3
-            ratings.append(rating)
+            ratings.append(rating if not np.isnan(rating) else 3)
 
     return ratings
 
