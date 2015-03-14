@@ -5,7 +5,7 @@ from sklearn.metrics.pairwise import pairwise_distances
 
 
 rating_matrix = pickle.load(file('../train.pkl'))
-movie_association = (rating_matrix * rating_matrix.T).T
+movie_association = rating_matrix.T * rating_matrix
 
 
 def k_nearest_neighbors(k, data_matrix, users, similarity_measure):
@@ -127,5 +127,3 @@ def model_cf(users, movies, k, similarity_measure, weight_schema):
 
 if __name__ == '__main__':
     pass
-
-
