@@ -22,3 +22,8 @@ def predict(output_file_path, test_file_path='../dev.csv', cf_type='memory',
     with open(output_file_path, 'wb') as f:
         for rating in ratings:
             f.write(str(rating) + '\n')
+
+
+if __name__ == '__main__':
+    predict('../dev-result.txt', cf_type='model', k=10,
+            similarity_measure='dot_product', weight_schema='weighted_sum')

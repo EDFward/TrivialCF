@@ -4,8 +4,10 @@ import os.path
 import numpy as np
 from scipy import sparse
 from sklearn.metrics.pairwise import pairwise_distances
+from sklearn import preprocessing
 
 from utility import read_data_matrix
+from itertools import izip
 
 
 def get_data_matrix(pickle_file_path, generate_method):
@@ -26,50 +28,8 @@ movie_cosine = get_data_matrix('../movie-cosine.pkl',
                                                           metric='cosine')))
 
 
-def k_nearest_neighbors(k, data_matrix, rows, similarity_measure, n_jobs=1):
-    """
-    Find k nearest neighbors for given rows of data_matrix. Used in
-    memory-based CF.
-    :param k: number of nearest users
-    :param data_matrix: represents data points
-    :param rows: rows to query of this data_matrix
-    :param similarity_measure: similarity_measure: 'cosine' or 'dot_product'
-    :return: nearest neighbors and corresponding similarities
-    """
-    nearest_neighbors = []
-    # find k nearest neighbor for each user
-    if similarity_measure == 'cosine':
-        dist = pairwise_distances(data_matrix,
-                                  data_matrix[rows, :],
-                                  metric='cosine',
-                                  n_jobs=n_jobs)
-        similarities = 1 - dist
-        # first count itself then remove it
-        min_index = np.argpartition(dist, k + 1, axis=0)[:k + 1, :]
-        # sort by distance for each column
-        for i in range(min_index.shape[1]):
-            col = min_index[:, i]
-            col = col[np.argsort(dist[:, i][col])]
-            # remove the most similar one: itself
-            nearest_neighbors.append(col[1:])
-    elif similarity_measure == 'dot_product':
-        similarities = (data_matrix * data_matrix[rows, :].T).toarray()
-        # make it column-wise distances matrix as above
-        dist = -similarities
-        min_index = np.argpartition(dist, k + 1, axis=0)[:k + 1, :]
-        for i in range(min_index.shape[1]):
-            col = min_index[:, i]
-            col = col[np.argsort(dist[:, i][col])]
-            # exclude the user itself
-            if rows[i] in col:
-                nn = np.delete(col, np.where(col == rows[i]))
-            else:
-                nn = col[:-1]
-            nearest_neighbors.append(nn)
-    return nearest_neighbors, similarities
-
-
-def memory_cf(users, movies, k, similarity_measure, weight_schema):
+def memory_cf(users, movies, k, similarity_measure, weight_schema,
+              data_matrix=rating_matrix):
     """
     Memory-based collaborative filtering.
     :param users: a user list. convert to a list if it's a single user
@@ -77,6 +37,7 @@ def memory_cf(users, movies, k, similarity_measure, weight_schema):
     :param k: number of nearest users
     :param similarity_measure: 'cosine' or 'dot_product'
     :param weight_schema: 'mean' or 'weighted_sum'
+    :param data_matrix: user ratings
     :return: recommended ratings for the queries
     """
     # argument sanity check
@@ -89,20 +50,30 @@ def memory_cf(users, movies, k, similarity_measure, weight_schema):
     if type(movies) != list:
         movies = [movies]
 
-    nearest_neighbors, similarities = k_nearest_neighbors(k, rating_matrix,
-                                                          users,
-                                                          similarity_measure)
+    # find k nearest neighbor for each user
+    if similarity_measure == 'cosine':
+        dist = pairwise_distances(data_matrix[users, :],
+                                  data_matrix,
+                                  metric='cosine')
+        similarities = 1 - dist
+    elif similarity_measure == 'dot_product':
+        similarities = (data_matrix[users, :] * data_matrix.T).toarray()
+        dist = -similarities
+
+    # first count itself then remove it
+    min_index = np.argpartition(dist, k + 1, axis=1)[:, :k + 1]
+
     ratings = []
     if weight_schema == 'mean':
-        for neighbors, movie in zip(nearest_neighbors, movies):
-            ratings.append(rating_matrix[neighbors, movie].sum() / k + 3)
+        for i, min_row in enumerate(min_index):
+            neighbors = np.delete(min_row, np.where(min_row == users[i]))
+            ratings.append(data_matrix[neighbors, movies[i]].sum() / k + 3)
     elif weight_schema == 'weighted_sum':
-        for neighbors, movie, similarity in zip(nearest_neighbors, movies,
-                                                similarities.T):
-            neighbor_ratings = rating_matrix[neighbors, movie].toarray()
-            rating = np.dot(neighbor_ratings.reshape(-1),
-                            similarity[neighbors])
-            rating /= similarity[neighbors].sum()
+        for i, (min_row, sim) in enumerate(izip(min_index, similarities)):
+            neighbors = np.delete(min_row, np.where(min_row == users[i]))
+            neighbor_ratings = data_matrix[neighbors, movies[i]]
+            rating = neighbor_ratings.T.dot(sim[neighbors]).squeeze()
+            rating /= sim[neighbors].sum()
             rating += 3
             ratings.append(rating if not np.isnan(rating) else 3)
 
@@ -124,39 +95,33 @@ def model_cf(users, movies, k, similarity_measure, weight_schema):
         movies = [movies]
 
     if similarity_measure == 'cosine':
-        neighbor_similarities = movie_cosine[movies, :].toarray()
+        similarities = movie_cosine[movies, :].toarray()
     elif similarity_measure == 'dot_product':
-        neighbor_similarities = movie_product[movies, :].toarray()
+        similarities = movie_product[movies, :].toarray()
 
-    dist = -neighbor_similarities
+    dist = -similarities
     min_index = np.argpartition(dist, k + 1, axis=1)[:, :k + 1]
-
-    nearest_neighbors = []
-    for i in range(min_index.shape[0]):
-        row = min_index[i, :]
-        row = row[np.argsort(dist[i, :][row])]
-        # exclude the movie itself
-        if movies[i] in row:
-            nn = np.delete(row, np.where(row == movies[i]))
-        else:
-            nn = row[:-1]
-        nearest_neighbors.append(nn)
 
     ratings = []
     if weight_schema == 'mean':
-        for neighbors, user in zip(nearest_neighbors, users):
-            ratings.append(rating_matrix[user, neighbors].sum() / k + 3)
+        for i, min_row in enumerate(min_index):
+            neighbors = np.delete(min_row, np.where(min_row == movies[i]))
+            ratings.append(rating_matrix[users[i], neighbors].sum() / k + 3)
     elif weight_schema == 'weighted_sum':
-        for neighbors, user, similarity in zip(nearest_neighbors, users,
-                                               neighbor_similarities):
-            neighbor_ratings = rating_matrix[user, neighbors].toarray()
-            rating = np.dot(neighbor_ratings.reshape(-1),
-                            similarity[neighbors])
-            rating /= similarity[neighbors].sum()
+        for i, (min_row, sim) in enumerate(izip(min_index, similarities)):
+            neighbors = np.delete(min_row, np.where(min_row == movies[i]))
+            neighbor_ratings = rating_matrix[users[i], neighbors]
+            rating = neighbor_ratings.dot(sim[neighbors]).squeeze()
+            rating /= sim[neighbors].sum()
             rating += 3
             ratings.append(rating if not np.isnan(rating) else 3)
 
     return ratings
+
+
+def standardization_cf(users, movies, k, weight_schema):
+    return memory_cf(users, movies, k, 'dot_product', weight_schema,
+                     data_matrix=preprocessing.scaled(rating_matrix))
 
 
 if __name__ == '__main__':
