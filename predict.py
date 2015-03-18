@@ -1,4 +1,4 @@
-from cf import memory_cf, model_cf
+from cf import memory_cf, model_cf, standardization_cf
 
 
 def predict(output_file_path, test_file_path='../dev.csv', cf_type='memory',
@@ -15,6 +15,9 @@ def predict(output_file_path, test_file_path='../dev.csv', cf_type='memory',
     elif cf_type == 'model':
         ratings = model_cf(test_users, test_movies, k, similarity_measure,
                            weight_schema)
+    elif cf_type == 'pcc':
+        ratings = standardization_cf(test_users, test_movies, k,
+                                     similarity_measure, weight_schema)
     else:
         print '==ERROR== wrong arguments for predictions'
         return
@@ -25,5 +28,5 @@ def predict(output_file_path, test_file_path='../dev.csv', cf_type='memory',
 
 
 if __name__ == '__main__':
-    predict('../dev-result.txt', cf_type='model', k=10,
-            similarity_measure='dot_product', weight_schema='weighted_sum')
+    predict('../dev-result.txt', cf_type='pcc', k=50,
+            similarity_measure='cosine', weight_schema='weighted_mean')
