@@ -4,7 +4,7 @@ from itertools import ifilter, islice
 
 import numpy as np
 from scipy import sparse
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, issparse
 from sklearn.metrics.pairwise import pairwise_distances, cosine_distances
 from sklearn import preprocessing
 
@@ -38,7 +38,7 @@ def memory_cf(users, movies, k, similarity_measure, weight_schema,
     :param k: number of nearest users
     :param similarity_measure: 'cosine' or 'dot_product'
     :param weight_schema: 'mean' or 'weighted_mean'
-    :param repr_matrix: sparse data point representation
+    :param repr_matrix: data point representation
     :return: recommended ratings for the queries
     """
     # argument sanity check
@@ -61,7 +61,9 @@ def memory_cf(users, movies, k, similarity_measure, weight_schema,
         dist = cosine_distances(repr_matrix[user_unique, :], repr_matrix)
         sims = 1 - dist
     elif similarity_measure == 'dot_product':
-        sims = (repr_matrix[user_unique, :] * repr_matrix.T).toarray()
+        sims = repr_matrix[user_unique, :].dot(repr_matrix.T)
+        if issparse(sims):
+            sims = sims.toarray()
         dist = -sims
 
     sorted_neighbors = np.argsort(dist, axis=1)
@@ -95,7 +97,7 @@ def memory_cf(users, movies, k, similarity_measure, weight_schema,
             else:
                 sim /= sim_sum
                 rating = rating_matrix_dense[neighbors, movie].T.dot(
-                    sim).squeeze() + 3
+                    sim).A.squeeze() + 3
         ratings.append(rating)
 
     return ratings
@@ -177,7 +179,6 @@ def standardization_cf(users, movies, k, similarity_measure, weight_schema):
     Same parameters as model, with `similarity_measure` unused.
     """
     scaled_rating_matrix = preprocessing.scale(rating_matrix.todense(), axis=1)
-    scaled_rating_matrix = csr_matrix(scaled_rating_matrix)
     return memory_cf(users, movies, k, 'dot_product', weight_schema,
                      repr_matrix=scaled_rating_matrix)
 
