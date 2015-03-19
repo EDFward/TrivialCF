@@ -113,8 +113,8 @@ def reinforce_cluster(doc_vectors, k_doc, k_word, random_seed, iter_num=5):
     :param k_doc: number of document clusters
     :param k_word: number of word clusters
     :param iter_num: iteration number
-    :param random_seed: use random initialization for kmeans or not
-    :return: word cluster center/belonging, document cluster/belonging
+    :param random_seed: use random initialization for k-means or not
+    :return: document repr/belonging, word repr/belonging
     """
     # initial w2dc
     w2dc = doc_vectors.transpose()
