@@ -51,92 +51,92 @@ if __name__ == '__main__':
     #### Experiment 2.1
     ####
 
-    # for sim in ('dot_product', 'cosine'):
-    #     for k in (10, 100, 500):
-    #         start = time.time()
-    #         predict(OUTPUT_FILE, cf_type='memory', k=k,
-    #                 similarity_measure=sim, weight_schema='mean')
-    #         runtime = time.time() - start
-    #         response = requests.post(URL,
-    #                                  files={'infile': open(OUTPUT_FILE, 'rb')})
-    #         rmse = SCORE_PATTERN.search(response.text).group(1)
-    #         print 'mean, %s, k=%d, rmse:%s, time:%f' % (sim, k, rmse, runtime)
+    for sim in ('dot_product', 'cosine'):
+        for k in (10, 100, 500):
+            start = time.time()
+            predict(OUTPUT_FILE, cf_type='memory', k=k,
+                    similarity_measure=sim, weight_schema='mean')
+            runtime = time.time() - start
+            response = requests.post(URL,
+                                     files={'infile': open(OUTPUT_FILE, 'rb')})
+            rmse = SCORE_PATTERN.search(response.text).group(1)
+            print 'mean, %s, k=%d, rmse:%s, time:%f' % (sim, k, rmse, runtime)
 
-    # for k in (10, 100, 500):
-    #     start = time.time()
-    #     predict(OUTPUT_FILE, cf_type='memory', k=k,
-    #             similarity_measure='cosine', weight_schema='weighted_mean')
-    #     runtime = time.time() - start
-    #     response = requests.post(URL,
-    #                              files={'infile': open(OUTPUT_FILE, 'rb')})
-    #     rmse = SCORE_PATTERN.search(response.text).group(1)
-    #     print 'weighted_sum, cosine, k=%d, rmse:%s, time:%f' % (k,
-    #                                                             rmse, runtime)
+    for k in (10, 100, 500):
+        start = time.time()
+        predict(OUTPUT_FILE, cf_type='memory', k=k,
+                similarity_measure='cosine', weight_schema='weighted_mean')
+        runtime = time.time() - start
+        response = requests.post(URL,
+                                 files={'infile': open(OUTPUT_FILE, 'rb')})
+        rmse = SCORE_PATTERN.search(response.text).group(1)
+        print 'weighted_sum, cosine, k=%d, rmse:%s, time:%f' % (k,
+                                                                rmse, runtime)
 
     ####
     #### Experiment 2.2
     ####
 
-    # for sim in ('dot_product', 'cosine'):
-    #     for k in (10, 100, 500):
-    #         start = time.time()
-    #         predict(OUTPUT_FILE, cf_type='model', k=k,
-    #                 similarity_measure=sim, weight_schema='mean')
-    #         runtime = time.time() - start
-    #         response = requests.post(URL,
-    #                                  files={'infile': open(OUTPUT_FILE, 'rb')})
-    #         rmse = SCORE_PATTERN.search(response.text).group(1)
-    #         print 'mean, %s, k=%d, rmse:%s, time:%f' % (sim, k, rmse, runtime)
-    #
-    # for k in (10, 100, 500):
-    #     start = time.time()
-    #     predict(OUTPUT_FILE, cf_type='model', k=k,
-    #             similarity_measure='cosine', weight_schema='weighted_mean')
-    #     runtime = time.time() - start
-    #     response = requests.post(URL,
-    #                              files={'infile': open(OUTPUT_FILE, 'rb')})
-    #     rmse = SCORE_PATTERN.search(response.text).group(1)
-    #     print 'weighted_sum, cosine, k=%d, rmse:%s, time:%f' % (k,
-    #                                                             rmse, runtime)
+    for sim in ('dot_product', 'cosine'):
+        for k in (10, 100, 500):
+            start = time.time()
+            predict(OUTPUT_FILE, cf_type='model', k=k,
+                    similarity_measure=sim, weight_schema='mean')
+            runtime = time.time() - start
+            response = requests.post(URL,
+                                     files={'infile': open(OUTPUT_FILE, 'rb')})
+            rmse = SCORE_PATTERN.search(response.text).group(1)
+            print 'mean, %s, k=%d, rmse:%s, time:%f' % (sim, k, rmse, runtime)
+    
+    for k in (10, 100, 500):
+        start = time.time()
+        predict(OUTPUT_FILE, cf_type='model', k=k,
+                similarity_measure='cosine', weight_schema='weighted_mean')
+        runtime = time.time() - start
+        response = requests.post(URL,
+                                 files={'infile': open(OUTPUT_FILE, 'rb')})
+        rmse = SCORE_PATTERN.search(response.text).group(1)
+        print 'weighted_sum, cosine, k=%d, rmse:%s, time:%f' % (k,
+                                                                rmse, runtime)
 
     ####
     #### Experiment 2.3
     ####
 
-    # for weight in ('mean', 'weighted_mean'):
-    #     for k in (10, 100, 500):
-    #         start = time.time()
-    #         predict(OUTPUT_FILE, cf_type='pcc', k=k,
-    #                 similarity_measure='cosine', weight_schema=weight)
-    #         runtime = time.time() - start
-    #         response = requests.post(URL,
-    #                                  files={'infile': open(OUTPUT_FILE, 'rb')})
-    #         rmse = SCORE_PATTERN.search(response.text).group(1)
-    #         print '%s, cosine, k=%d, rmse:%s, time:%f' % (weight, k, rmse,
-    #                                                       runtime)
+    for weight in ('mean', 'weighted_mean'):
+        for k in (10, 100, 500):
+            start = time.time()
+            predict(OUTPUT_FILE, cf_type='pcc', k=k,
+                    similarity_measure='cosine', weight_schema=weight)
+            runtime = time.time() - start
+            response = requests.post(URL,
+                                     files={'infile': open(OUTPUT_FILE, 'rb')})
+            rmse = SCORE_PATTERN.search(response.text).group(1)
+            print '%s, cosine, k=%d, rmse:%s, time:%f' % (weight, k, rmse,
+                                                          runtime)
 
     ####
     #### Experiment 2.5
     ####
 
-    # for sim in ('dot_product', 'cosine'):
-    #     for k in (10, 100,):
-    #         predict(OUTPUT_FILE, cf_type='cluster', k=k,
-    #                 similarity_measure=sim, weight_schema='mean',
-    #                 cluster_cf_type='memory')
-    #         response = requests.post(URL,
-    #                                  files={'infile': open(OUTPUT_FILE, 'rb')})
-    #         rmse = SCORE_PATTERN.search(response.text).group(1)
-    #         print 'mean, %s, k=%d, rmse:%s' % (sim, k, rmse)
+    for sim in ('dot_product', 'cosine'):
+        for k in (10, 100,):
+            predict(OUTPUT_FILE, cf_type='cluster', k=k,
+                    similarity_measure=sim, weight_schema='mean',
+                    cluster_cf_type='memory')
+            response = requests.post(URL,
+                                     files={'infile': open(OUTPUT_FILE, 'rb')})
+            rmse = SCORE_PATTERN.search(response.text).group(1)
+            print 'mean, %s, k=%d, rmse:%s' % (sim, k, rmse)
 
-    # for k in (10, 100,):
-    #     predict(OUTPUT_FILE, cf_type='cluster', k=k,
-    #             similarity_measure='cosine', weight_schema='weighted_mean',
-    #             cluster_cf_type='memory')
-    #     response = requests.post(URL,
-    #                              files={'infile': open(OUTPUT_FILE, 'rb')})
-    #     rmse = SCORE_PATTERN.search(response.text).group(1)
-    #     print 'weighted_sum, cosine, k=%d, rmse:%s' % (k, rmse)
+    for k in (10, 100,):
+        predict(OUTPUT_FILE, cf_type='cluster', k=k,
+                similarity_measure='cosine', weight_schema='weighted_mean',
+                cluster_cf_type='memory')
+        response = requests.post(URL,
+                                 files={'infile': open(OUTPUT_FILE, 'rb')})
+        rmse = SCORE_PATTERN.search(response.text).group(1)
+        print 'weighted_sum, cosine, k=%d, rmse:%s' % (k, rmse)
 
     ####
     #### Experiment 2.6
