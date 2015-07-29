@@ -1,4 +1,4 @@
-# Collaborative filtering experiments
+# Collaborative Filtering Experiments
 
 ### Code Structure
 
